@@ -1,4 +1,4 @@
-package ztsfc_logger
+package logger
 
 import (
 	"os"
