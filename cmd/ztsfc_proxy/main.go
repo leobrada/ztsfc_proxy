@@ -5,7 +5,7 @@ import (
 )
 
 func init() {
-	logger.logger_init()
+	logger.Logger_init()
 }
 
 func main() {
