@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/leobrada/ztsfc_proxy/internal/logger"
+	"github.com/leobrada/ztsfc_proxy/common/logger"
 )
 
 func init() {
