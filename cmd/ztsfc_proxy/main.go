@@ -22,8 +22,8 @@ func init() {
 	flag.StringVar(&systemLoggerOutput, "o", "stdout", "Output path of system logger")
 	flag.BoolVar(&debugMode, "debug", false, "Enable debug output level")
 	flag.BoolVar(&debugMode, "d", false, "Enable debug output level")
-	flag.StringVar(&systemLoggerFormat, "format", "text", "Output format of system logger")
-	flag.StringVar(&systemLoggerFormat, "f", "text", "Output format of system logger")
+	flag.StringVar(&systemLoggerFormat, "format", "text", "Output format of system logger {text,json}")
+	flag.StringVar(&systemLoggerFormat, "f", "text", "Output format of system logger {text,json}")
 	flag.Parse()
 
 	// initialize the global SystemLogger defined in package "logger"
@@ -32,6 +32,8 @@ func init() {
 		logger.SystemLogger.Errorf("main.init(): %v", err)
 		os.Exit(1)
 	}
+
+	logger.SystemLogger.Infof("main.init(): Initializing ZTSFC Proxy from %s - OK", confFilePath)
 }
 
 func main() {
