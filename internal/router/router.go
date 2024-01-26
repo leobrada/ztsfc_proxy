@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/leobrada/ztsfc_proxy/config"
 	"github.com/leobrada/ztsfc_proxy/internal/logger"
 )
 
@@ -60,7 +61,7 @@ func NewRouter() *Router {
 	// Setting Up the Frontend Server
 	router.frontend = &http.Server{
 		//Addr:         config.Config.Pep.ListenAddr,
-		Addr:         ":https",
+		Addr:         config.Config.Frontend.Addr,
 		TLSConfig:    router.tlsConfig,
 		ReadTimeout:  time.Hour * 1,
 		WriteTimeout: time.Hour * 1,
@@ -70,6 +71,14 @@ func NewRouter() *Router {
 
 	return router
 }
+
+func (router *Router) ListenAndServe() error {
+	return router.frontend.ListenAndServe()
+}
+
+//func (router *Router) ListenAndServeTLS() error {
+//	return router.frontend.ListenAndServeTLS("", "")
+//}
 
 // ServeHTTP gets called if a request receives the PEP. The function implements
 // the PEP's main routine: It performs basic authentication, authorization with

@@ -4,7 +4,9 @@ import (
 	"flag"
 	"os"
 
+	"github.com/leobrada/ztsfc_proxy/config"
 	"github.com/leobrada/ztsfc_proxy/internal/logger"
+	"github.com/leobrada/ztsfc_proxy/internal/router"
 )
 
 var (
@@ -16,8 +18,8 @@ var (
 
 func init() {
 	// parse command-line arguments
-	flag.StringVar(&confFilePath, "config", "./config/conf.yml", "Path to user defined YML config file")
-	flag.StringVar(&confFilePath, "c", "./config/conf.yml", "Path to user defined YML config file")
+	flag.StringVar(&confFilePath, "config", "./config/config.yml", "Path to user defined YML config file")
+	flag.StringVar(&confFilePath, "c", "./config/config.yml", "Path to user defined YML config file")
 	flag.StringVar(&systemLoggerOutput, "output", "stdout", "Output path of system logger")
 	flag.StringVar(&systemLoggerOutput, "o", "stdout", "Output path of system logger")
 	flag.BoolVar(&debugMode, "debug", false, "Enable debug output level")
@@ -33,11 +35,21 @@ func init() {
 		os.Exit(1)
 	}
 
+	err = config.Config.InitGlobalConfig(confFilePath)
+	if err != nil {
+		logger.SystemLogger.Errorf("main.init(): %v", err)
+		os.Exit(1)
+	}
+
 	logger.SystemLogger.Infof("main.init(): Initializing ZTSFC Proxy from %s - OK", confFilePath)
 }
 
 func main() {
-	logger.SystemLogger.Info("Hello...")
+	ztsfcProxy := router.NewRouter()
+	logger.SystemLogger.Info("main.main(): New ZTSFC Proxy successfully created")
+	if err := ztsfcProxy.ListenAndServe(); err != nil {
+		logger.SystemLogger.Errorf("main.main(): Error on listening and server: %v", err)
+	}
 }
 
 /*
