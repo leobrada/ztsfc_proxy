@@ -4,8 +4,8 @@ import (
 	"flag"
 
 	"github.com/leobrada/ztsfc_proxy/internal/configs"
+	"github.com/leobrada/ztsfc_proxy/internal/frontend"
 	"github.com/leobrada/ztsfc_proxy/internal/logger"
-	"github.com/leobrada/ztsfc_proxy/internal/router"
 )
 
 var (
@@ -43,9 +43,12 @@ func init() {
 }
 
 func main() {
-	ztsfcProxy := router.NewRouter()
-	logger.SystemLogger.Info("main.main(): New ZTSFC Proxy successfully created")
-	if err := ztsfcProxy.ListenAndServeTLS(); err != nil {
-		logger.SystemLogger.Errorf("main.main(): Error on listening and server: %v", err)
+	frontend, err := frontend.NewFrontend(config)
+	if err != nil {
+		logger.SystemLogger.Fatalf("main.main(): %v", err)
+	}
+
+	if err = frontend.ListenAndServeTLS("", ""); err != nil {
+		logger.SystemLogger.Fatalf("main.main(): %v", err)
 	}
 }

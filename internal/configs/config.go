@@ -7,8 +7,9 @@ import (
 )
 
 type Config struct {
-	//Frontend        frontendConfig `yaml:"frontend"`
-	//DataPlaneLogger loggerConfig   `yaml:"data_plane_logger"`
+	Frontend        frontendConfig `yaml:"frontend"`
+	DataPlaneLogger loggerConfig   `yaml:"data_plane_logger"`
+	TLS             tlsConfig      `yaml:"tls"`
 }
 
 func NewConfig(confFilePath string) (*Config, error) {
