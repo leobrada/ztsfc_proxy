@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/leobrada/ztsfc_proxy/config"
+	"github.com/leobrada/ztsfc_proxy/internal/config"
 	"github.com/leobrada/ztsfc_proxy/internal/logger"
 )
 
@@ -23,21 +23,20 @@ func NewRouter() *Router {
 	router.tlsConfig = &tls.Config{
 		Rand:                   nil,
 		Time:                   nil,
-		InsecureSkipVerify:     false,
 		MinVersion:             tls.VersionTLS13,
 		MaxVersion:             tls.VersionTLS13,
 		SessionTicketsDisabled: true,
 		Certificates:           nil,
 		//ClientAuth:             tls.RequireAndVerifyClientCert,
 		//ClientCAs:              config.Config.CAcertPoolPepAcceptsFromExt,
-		//GetCertificate: func(cli *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		//	// use SNI map to load suitable certificate
-		//	service, ok := config.Config.ServiceSniMap[cli.ServerName]
-		//	if !ok {
-		//		return nil, fmt.Errorf("router: GetCertificate(): could not serve a suitable certificate for %s", cli.ServerName)
-		//	}
-		//	return &service.X509KeyPairShownByPepToClient, nil
-		//},
+		GetCertificate: func(cli *tls.ClientHelloInfo) (*tls.Certificate, error) {
+			// use SNI map to load suitable certificate
+			service, ok := config.Config.ServicePool.SniToService[cli.ServerName]
+			if !ok {
+				return nil, fmt.Errorf("router.GetCertificate(): could not serve a suitable certificate for %s", cli.ServerName)
+			}
+			return &service.X509KeyPairShownByPepToClient, nil
+		},
 		//VerifyConnection: func(con tls.ConnectionState) error {
 		//	if len(con.VerifiedChains) == 0 || len(con.VerifiedChains[0]) == 0 {
 		//		return fmt.Errorf("router: VerifyConnection(): error: verified chains does not hold a valid client certificate")
@@ -66,14 +65,14 @@ func NewRouter() *Router {
 		ReadTimeout:  time.Hour * 1,
 		WriteTimeout: time.Hour * 1,
 		Handler:      mux,
-		ErrorLog:     log.New(logger.SystemLogger.Out, "", 0),
+		ErrorLog:     log.New(logger.SystemLogger.Out, "[DataPlane][\033[31mERROR\033[0m] ", 0),
 	}
 
 	return router
 }
 
-func (router *Router) ListenAndServe() error {
-	return router.frontend.ListenAndServe()
+func (router *Router) ListenAndServeTLS() error {
+	return router.frontend.ListenAndServeTLS("", "")
 }
 
 //func (router *Router) ListenAndServeTLS() error {

@@ -8,27 +8,59 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var SystemLogger *logrus.Logger
+var (
+	SystemLogger *logrus.Logger
+	Success      string = "\033[32msuccessfully\033[0m"
+)
 
-func SystemLoggerInit(systemLoggerOutput string, debugMode bool, systemLoggerFormat string) error {
+func NewSystemLogger(systemLoggerOutput string, debugMode, errorMode bool, systemLoggerFormat string) error {
 	SystemLogger = logrus.New()
 
 	// set SystemLogger ouput path
-	loggerOutput, err := gct.GetWriter(systemLoggerOutput)
+	err := initSystemLoggerOutput(systemLoggerOutput)
 	if err != nil {
-		SystemLogger.SetOutput(os.Stderr)
-		return fmt.Errorf("logger.System_logger_init(): %v", err)
+		return fmt.Errorf("logger.InitSystemLogger(): %v", err)
 	}
-	SystemLogger.SetOutput(loggerOutput)
 
 	// set SystemLogger info level
-	if debugMode {
-		SystemLogger.SetLevel(logrus.DebugLevel)
-	} else {
-		SystemLogger.SetLevel(logrus.InfoLevel)
+	err = initSystemLoggerInfoLevel(debugMode, errorMode)
+	if err != nil {
+		return fmt.Errorf("logger.InitSystemLogger(): %v", err)
 	}
 
 	// set SystemLogger output format
+	initOutputFormat(systemLoggerFormat)
+
+	SystemLogger.Debugf("logger.NewSystemLogger(): SystemLogger %s initialized. Output set to '%s', format set to '%s'", Success, systemLoggerOutput, systemLoggerFormat)
+
+	return nil
+}
+
+func initSystemLoggerOutput(systemLoggerOutput string) error {
+	loggerOutput, err := gct.GetWriter(systemLoggerOutput)
+	if err != nil {
+		SystemLogger.SetOutput(os.Stderr)
+		return fmt.Errorf("logger.initSystemLoggerOutput(): %v", err)
+	}
+	SystemLogger.SetOutput(loggerOutput)
+	return nil
+}
+
+func initSystemLoggerInfoLevel(debugMode, errorMode bool) error {
+	switch {
+	case debugMode && errorMode:
+		return fmt.Errorf("logger.initSystemLoggerInfoLevel(): options 'debugMode' and 'errorMode' are mutually exclusive")
+	case debugMode:
+		SystemLogger.SetLevel(logrus.DebugLevel)
+	case errorMode:
+		SystemLogger.SetLevel(logrus.ErrorLevel)
+	default:
+		SystemLogger.SetLevel(logrus.InfoLevel)
+	}
+	return nil
+}
+
+func initOutputFormat(systemLoggerFormat string) {
 	switch systemLoggerFormat {
 	case "json":
 		SystemLogger.SetFormatter(&logrus.JSONFormatter{
@@ -39,18 +71,16 @@ func SystemLoggerInit(systemLoggerOutput string, debugMode bool, systemLoggerFor
 				logrus.FieldKeyFunc:  "@caller",
 			},
 		})
-		SystemLogger.Infoln("logger.System_logger_init(): SystemLogger output format set to 'json'")
+		//SystemLogger.Debugln("logger.initOutputFormat(): SystemLogger output format set to 'json'")
 	case "text":
 		SystemLogger.SetFormatter(&logrus.TextFormatter{
 			FullTimestamp: true,
 		})
-		SystemLogger.Infoln("logger.System_logger_init(): SystemLogger output format set to 'text'")
+		//SystemLogger.Debugln("logger.initOutputFormat(): SystemLogger output format set to 'text'")
 	default:
 		SystemLogger.SetFormatter(&logrus.TextFormatter{
 			FullTimestamp: true,
 		})
-		SystemLogger.Infof("logger.System_logger_init(): SystemLogger output format '%s' is not supported. fallback to 'text'", systemLoggerFormat)
+		SystemLogger.Infof("logger.initOutputFormat(): SystemLogger output format '%s' is not supported. fallback to 'text'", systemLoggerFormat)
 	}
-
-	return nil
 }
