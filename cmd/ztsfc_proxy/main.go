@@ -9,13 +9,14 @@ import (
 )
 
 var (
+	// variables storing command-line arguments
 	confFilePath       string
 	systemLoggerOutput string
 	debugMode          bool
 	errorMode          bool
 	systemLoggerFormat string
 
-	// config pointer
+	// pointer to central configuration file storing all configuration settings
 	config *configs.Config
 )
 
@@ -34,6 +35,7 @@ func init() {
 		logger.SystemLogger.Fatalf("main.init(): %v", err)
 	}
 
+	// loads all configuration settings from the yaml file specified in 'confFilePath'
 	config, err = configs.NewConfig(confFilePath)
 	if err != nil {
 		logger.SystemLogger.Fatalf("main.init(): %v", err)
@@ -43,6 +45,8 @@ func init() {
 }
 
 func main() {
+	// starts frontend HTTP server with all necessary configuration settings set like TLS config
+	// derived from config file read in from the 'confFilePath' variable in main.init()
 	frontend, err := frontend.NewFrontend(config)
 	if err != nil {
 		logger.SystemLogger.Fatalf("main.main(): %v", err)

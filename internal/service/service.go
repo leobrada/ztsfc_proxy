@@ -1,26 +1,25 @@
 package service
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/url"
 
-	gct "github.com/leobrada/golang_convenience_tools"
+	"github.com/leobrada/ztsfc_proxy/internal/configs"
 )
 
 type Service struct {
-	Sni                                string `yaml:"sni"`
-	TargetServiceAddr                  string `yaml:"target_service_addr"`
-	TargetServiceUrl                   *url.URL
-	CertShownByPepToClientsMatchingSni string `yaml:"cert_shown_by_pep_to_clients_matching_sni"`
-	PrivkeyForCertShownByPepToClient   string `yaml:"privkey_for_cert_shown_by_pep_to_client"`
-	X509KeyPairShownByPepToClient      tls.Certificate
-	CertShownByPepToService            string `yaml:"cert_shown_by_pep_to_service"`
-	PrivkeyForCertShownByPepToService  string `yaml:"privkey_for_cert_shown_by_pep_to_service"`
-	X509KeyPairShownByPepToService     tls.Certificate
-	CertPepAcceptsWhenShownByService   string `yaml:"cert_pep_accepts_when_shown_by_service"`
+	ServiceUrl *url.URL
 }
 
+func NewService(serviceConf *configs.ServiceConfig) (*Service, error) {
+	serviceURL, err := url.Parse(serviceConf.ServiceURL)
+	if err != nil {
+		return nil, fmt.Errorf("service.NewService(): %v", err)
+	}
+	return &Service{ServiceUrl: serviceURL}, nil
+}
+
+/*
 func (s *Service) InitService() error {
 	var err error
 
@@ -64,3 +63,4 @@ func (s *Service) checkEmptyStringFields() []string {
 
 	return emptyFields
 }
+*/
