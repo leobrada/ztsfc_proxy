@@ -53,7 +53,7 @@ func NewClientTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 		Certificates:           nil,
 		RootCAs:                serverCAs,
 		GetClientCertificate:   makeGetClientCertificateFunction(cm),
-		VerifyConnection:       makeVerifyConnection(serverCRL),
+		VerifyConnection:       makeVerifyConnection(tls.RequireAndVerifyClientCert, serverCRL),
 	}
 	return clientTLS, nil
 }
@@ -90,6 +90,9 @@ func NewServerTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 		return nil, fmt.Errorf("tlsutil.NewServerTLS(): could not load CL: %v", err)
 	}
 
+	// Retrieve client authentication method
+	clientAuthType := setMTLS(tlsConfig)
+
 	// Create a new TLS configuration for the server.
 	serverTLS := &tls.Config{
 		Rand:                   nil,
@@ -100,10 +103,10 @@ func NewServerTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 		MaxVersion:             tls.VersionTLS13,
 		SessionTicketsDisabled: true,
 		Certificates:           nil,
-		ClientAuth:             setMTLS(tlsConfig),
+		ClientAuth:             clientAuthType,
 		ClientCAs:              clientCAs,
 		GetCertificate:         makeGetCertificateFunction(cm),
-		VerifyConnection:       makeVerifyConnection(clientCRL),
+		VerifyConnection:       makeVerifyConnection(clientAuthType, clientCRL),
 	}
 	return serverTLS, nil
 }
@@ -265,22 +268,23 @@ func compareDNs(dn1, dn2 []byte) bool {
 //
 // Returns:
 //   - func(tls.ConnectionState) error: A function that verifies TLS connections against the provided CRL.
-func makeVerifyConnection(crl *x509.RevocationList) func(tls.ConnectionState) error {
+func makeVerifyConnection(clientAuthType tls.ClientAuthType, crl *x509.RevocationList) func(tls.ConnectionState) error {
 	// Define a function for verifying TLS connections.
 	return func(con tls.ConnectionState) error {
-		// Check if the verified chains hold a valid client certificate.
-		if len(con.VerifiedChains) == 0 || len(con.VerifiedChains[0]) == 0 {
-			return fmt.Errorf("tlsutil.VerifyConnection(): error: verified chains does not hold a valid client certificate")
-		}
+		if clientAuthType != tls.NoClientCert {
+			// Check if the verified chains hold a valid client certificate.
+			if len(con.VerifiedChains) == 0 || len(con.VerifiedChains[0]) == 0 {
+				return fmt.Errorf("tlsutil.VerifyConnection(): error: verified chains does not hold a valid client certificate")
+			}
 
-		// Iterate through revoked certificate entries in the CRL.
-		for _, revokedCertificateEntry := range crl.RevokedCertificateEntries {
-			// Check if the client certificate serial number matches any revoked certificate entry.
-			if con.VerifiedChains[0][0].SerialNumber.Cmp(revokedCertificateEntry.SerialNumber) == 0 {
-				return fmt.Errorf("tlsutil.VerifyConnection(): client '%s' certificate is revoked", con.VerifiedChains[0][0].Subject.CommonName)
+			// Iterate through revoked certificate entries in the CRL.
+			for _, revokedCertificateEntry := range crl.RevokedCertificateEntries {
+				// Check if the client certificate serial number matches any revoked certificate entry.
+				if con.VerifiedChains[0][0].SerialNumber.Cmp(revokedCertificateEntry.SerialNumber) == 0 {
+					return fmt.Errorf("tlsutil.VerifyConnection(): client '%s' certificate is revoked", con.VerifiedChains[0][0].Subject.CommonName)
+				}
 			}
 		}
-
 		// Return nil if the connection is verified successfully.
 		return nil
 	}
