@@ -7,9 +7,11 @@ import (
 	"log"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 	"time"
 
 	"github.com/leobrada/ztsfc_proxy/internal/configs"
+	"github.com/leobrada/ztsfc_proxy/internal/security/hashutil"
 	"github.com/leobrada/ztsfc_proxy/internal/service"
 	"github.com/leobrada/ztsfc_proxy/internal/web"
 )
@@ -60,10 +62,12 @@ func (pep *PEP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		web.Handle500(w)
 		return
 	}
-
-	if pep != nil {
+	if pep != nil && pep.dpLogger != nil {
 		proxy.ErrorLog = pep.dpLogger
 	}
+	// Calculate the request hash to match request and response
+	rHash := hashutil.CalcRequestHash(r)
+	proxy.ModifyResponse = pep.responseDirector(rHash)
 
 	proxyTransport, err := GetHTTPTransportForSchemeAndTLS(targetService.ServiceUrl.Scheme, pep.services.ServicesTLS)
 	if err != nil {
@@ -73,7 +77,20 @@ func (pep *PEP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	proxy.Transport = proxyTransport
 
+	pep.requestDirector(w, r, targetService.ServiceUrl, rHash)
+
 	proxy.ServeHTTP(w, r)
+}
+
+func (pep *PEP) requestDirector(w http.ResponseWriter, r *http.Request, resource *url.URL, rHash string) {
+	pep.dpLogger.Printf("http: forwarding %s request from %s to %s - [Hash:'%s']", r.Method, r.RemoteAddr, resource.String()+r.URL.String(), rHash)
+}
+
+func (pep *PEP) responseDirector(rHash string) func(*http.Response) error {
+	return func(r *http.Response) error {
+		pep.dpLogger.Printf("http: serving %s to %s - [Hash:'%s']", r.Request.URL.String(), r.Request.RemoteAddr, rHash)
+		return nil
+	}
 }
 
 // GetHTTPTransportForSchemeAndTLS returns an HTTP transport based on the provided scheme and TLS configuration.

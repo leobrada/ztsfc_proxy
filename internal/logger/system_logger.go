@@ -10,7 +10,7 @@ import (
 
 var (
 	SystemLogger *logrus.Logger
-	Success      string = "\033[32msuccessfully\033[0m"
+	Success      string = "successfully"
 )
 
 func NewSystemLogger(systemLoggerOutput string, debugMode, errorMode bool, systemLoggerFormat string) error {
@@ -75,11 +75,13 @@ func initOutputFormat(systemLoggerFormat string) {
 	case "text":
 		SystemLogger.SetFormatter(&logrus.TextFormatter{
 			FullTimestamp: true,
+			DisableColors: true,
 		})
 		//SystemLogger.Debugln("logger.initOutputFormat(): SystemLogger output format set to 'text'")
 	default:
 		SystemLogger.SetFormatter(&logrus.TextFormatter{
 			FullTimestamp: true,
+			DisableColors: true,
 		})
 		SystemLogger.Infof("logger.initOutputFormat(): SystemLogger output format '%s' is not supported. fallback to 'text'", systemLoggerFormat)
 	}

@@ -27,7 +27,7 @@ func NewDataPlaneLogger(dpLoggerConfig *configs.LoggerConfig) (*log.Logger, erro
 	}
 
 	// Create a new logger instance with the configured output, prefix, and flags.
-	dpLogger := log.New(loggerOutput, "\033[31m[DataPlane]\033[0m - ", log.Ldate|log.Ltime|log.Lmicroseconds)
+	dpLogger := log.New(loggerOutput, "[DataPlane] - ", log.Ldate|log.Ltime)
 
 	// Log a debug message indicating successful initialization of the Data Plane logger.
 	SystemLogger.Debugf("logger.NewSystemLogger(): DataPaneLogger %s initialized. Output set to '%s'", Success, dpLoggerConfig.Output)
