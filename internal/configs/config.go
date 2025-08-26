@@ -9,9 +9,10 @@ import (
 // Config is a central structure that encapsulates configuration settings for various components of the application.
 // It aggregates multiple sub-configuration structures, each corresponding to a different component.
 type Config struct {
-	Frontend        frontendConfig `yaml:"frontend"`          // Configuration specific to the frontend component.
-	DataPlaneLogger LoggerConfig   `yaml:"data_plane_logger"` // Configuration for logging within the data plane.
-	Services        ServicesConfig `yaml:"services"`          // Configuration for various services the PEP serves.
+	Frontend           frontendConfig `yaml:"frontend"`             // Configuration specific to the frontend component.
+	DataPlaneLogger    LoggerConfig   `yaml:"data_plane_logger"`    // Configuration for logging within the data plane.
+	ControlPlaneLogger LoggerConfig   `yaml:"control_plane_logger"` // Configuration for logging within the control plane.
+	Services           ServicesConfig `yaml:"services"`             // Configuration for various services the PEP serves.
 }
 
 // NewConfig creates a new Config instance by loading configuration settings from a specified YAML file.

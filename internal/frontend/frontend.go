@@ -7,6 +7,7 @@ import (
 
 	"github.com/leobrada/ztsfc_proxy/internal/configs"
 	"github.com/leobrada/ztsfc_proxy/internal/logger"
+	"github.com/leobrada/ztsfc_proxy/internal/pdp"
 	"github.com/leobrada/ztsfc_proxy/internal/pep"
 	"github.com/leobrada/ztsfc_proxy/internal/security/tlsutil"
 )
@@ -26,8 +27,20 @@ func NewFrontend(config *configs.Config) (*http.Server, error) {
 		return nil, fmt.Errorf("frontend.NewFrontend(): %v", err)
 	}
 
+	// Initialize Control Plane logger.
+	cpLogger, err := logger.NewControlPlaneLogger(&config.ControlPlaneLogger)
+	if err != nil {
+		return nil, fmt.Errorf("frontend.NewFrontend(): %v", err)
+	}
+
 	// Initialize TLS configuration for the server.
 	tls, err := tlsutil.NewServerTLS(&config.Frontend.TLS)
+	if err != nil {
+		return nil, fmt.Errorf("frontend.NewFrontend(): %v", err)
+	}
+
+	// Initialize Policy Decision Point (PDP).
+	pdp, err := pdp.NewPDP(config, cpLogger)
 	if err != nil {
 		return nil, fmt.Errorf("frontend.NewFrontend(): %v", err)
 	}

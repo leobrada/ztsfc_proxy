@@ -65,7 +65,7 @@ func (pep *PEP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if pep != nil && pep.dpLogger != nil {
 		proxy.ErrorLog = pep.dpLogger
 	}
-	// Calculate the request hash to match request and response
+	// Calculate the request hash to match requests and responses in log files
 	rHash := hashutil.CalcRequestHash(r)
 	proxy.ModifyResponse = pep.responseDirector(rHash)
 
@@ -82,15 +82,24 @@ func (pep *PEP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	proxy.ServeHTTP(w, r)
 }
 
+// Request director is used to modify and log the request if needed
+// The log includes a hash of the whole request (rHash) including timestamp to match requests and responses in log files
 func (pep *PEP) requestDirector(w http.ResponseWriter, r *http.Request, resource *url.URL, rHash string) {
 	pep.dpLogger.Printf("http: forwarding %s request from %s to %s - [Hash:'%s']", r.Method, r.RemoteAddr, resource.String()+r.URL.String(), rHash)
 }
 
+// Request director is used to modify and log the response if needed
+// The log includes a hash of the whole request (rHash) including timestamp to match requests and responses in log files
 func (pep *PEP) responseDirector(rHash string) func(*http.Response) error {
-	return func(r *http.Response) error {
-		pep.dpLogger.Printf("http: serving %s to %s - [Hash:'%s']", r.Request.URL.String(), r.Request.RemoteAddr, rHash)
+	return func(resp *http.Response) error {
+		setHSTSHeader(resp)
+		pep.dpLogger.Printf("http: serving %s to %s - [Hash:'%s']", resp.Request.URL.String(), resp.Request.RemoteAddr, rHash)
 		return nil
 	}
+}
+
+func setHSTSHeader(response *http.Response) {
+	response.Header.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 }
 
 // GetHTTPTransportForSchemeAndTLS returns an HTTP transport based on the provided scheme and TLS configuration.

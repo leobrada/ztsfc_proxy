@@ -3,16 +3,15 @@ package logger
 import (
 	"fmt"
 	"log"
-	"os"
 
 	gct "github.com/leobrada/golang_convenience_tools"
 	"github.com/leobrada/ztsfc_proxy/internal/configs"
 )
 
-// NewDataPlaneLogger creates a new logger instance for the Data Plane with the provided configuration.
+// NewDataPlaneLogger creates a new logger instance for the data plane with the provided configuration.
 // It initializes the logger output and sets up a custom logger with specific prefix and flags.
 // Parameters:
-//   - dpLoggerConfig: A pointer to the configuration struct holding logger settings for the Data Plane.
+//   - dpLoggerConfig: A pointer to the configuration struct holding logger settings for the data plane.
 //
 // Returns:
 //   - *log.Logger: A pointer to the created logger instance.
@@ -21,8 +20,6 @@ func NewDataPlaneLogger(dpLoggerConfig *configs.LoggerConfig) (*log.Logger, erro
 	// Get the writer for logger output.
 	loggerOutput, err := gct.GetWriter(dpLoggerConfig.Output)
 	if err != nil {
-		// If an error occurs, set the output to standard error and return the error.
-		SystemLogger.SetOutput(os.Stderr)
 		return nil, fmt.Errorf("logger.NewDataPlaneLogger(): %v", err)
 	}
 
@@ -30,7 +27,7 @@ func NewDataPlaneLogger(dpLoggerConfig *configs.LoggerConfig) (*log.Logger, erro
 	dpLogger := log.New(loggerOutput, "[DataPlane] - ", log.Ldate|log.Ltime)
 
 	// Log a debug message indicating successful initialization of the Data Plane logger.
-	SystemLogger.Debugf("logger.NewSystemLogger(): DataPaneLogger %s initialized. Output set to '%s'", Success, dpLoggerConfig.Output)
+	SystemLogger.Debugf("logger.NewDataPlaneLogger(): DataPaneLogger %s initialized. Output set to '%s'", Success, dpLoggerConfig.Output)
 
 	return dpLogger, nil
 }
