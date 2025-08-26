@@ -1,0 +1,40 @@
+frontend:
+  addr: "ztsfc.security.example.de:443"
+  tls:
+    # Certificate list server shows to clients according to requested server (SNI)
+    certificates:
+      # Server Name Indication (SNI). As client it is not used. As server it is used to chose corect certificate that is shown to clients.
+      ztsfc.informatik.uni-ulm.de:
+        cert_file: "/etc/letsencrypt/live/ztsfc.security.example.de/fullchain.pem"
+        key_file: "/etc/letsencrypt/live/ztsfc.security.example.de/privkey.pem"
+    # Defines if the frontend is verifying the client via x.509 certificate
+    client_auth: true
+    # List of CAs whos signatures are accepted when shown by clients
+    cas:
+      - "/Users/example/openssl/ztsfc_intCA_external.crt"
+    # certificate revocation list checked for client certificates provided by clients
+    crl: "/Users/example/openssl/ztsfc_intCA_external_crl.der"
+
+data_plane_logger:
+  output: "./logs/ztsfc_proxy_dp.log"
+
+control_plane_logger:
+  output: "./logs/ztsfc_proxy_cp.log"
+
+services:
+  tls:
+    # Certificate list client shows to server
+    certificates:
+      # Server Name Indication (SNI). As client it is not used. As server it is used to chose corect certificate that is shown to clients.
+      ztsfc.informatik.uni-ulm.de: 
+        cert_file: "/Users/example/openssl/certificates/ztsfc_proxy_internal_client.crt"
+        key_file: "/Users/example/openssl/certificates/ztsfc_proxy_internal_client_priv.key"
+    # List of CAs whos signatures are accepted when shown by servers
+    cas:
+      - "/Users/example/openssl/ztsfc_intCA_internal.crt"
+    # certificate revocation list checked for server certificates provided by servers
+    crl: "/Users/example/openssl/ztsfc_intCA_internal_crl.der"
+  service_pool:
+     # Server Name Indication (SNI)
+    ztsfc.security.example.de:
+      service_url: "http://django.ztsfc.com:8000"
