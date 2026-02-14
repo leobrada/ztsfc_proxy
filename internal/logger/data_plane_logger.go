@@ -8,8 +8,8 @@ import (
 	"github.com/leobrada/ztsfc_proxy/internal/configs"
 )
 
-// NewDataPlaneLogger creates a new logger instance for the data plane with the provided configuration.
-// It initializes the logger output and sets up a custom logger with specific prefix and flags.
+// NewDataPlaneLogger creates a logger for request/response logging.
+// The output can be stdout, stderr, or a file path resolved by the helper.
 // Parameters:
 //   - dpLoggerConfig: A pointer to the configuration struct holding logger settings for the data plane.
 //

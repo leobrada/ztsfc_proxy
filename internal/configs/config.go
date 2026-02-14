@@ -1,3 +1,5 @@
+// Package configs defines the YAML-backed configuration structures used by the proxy.
+// It provides a single entrypoint for loading and validating configuration data.
 package configs
 
 import (
@@ -6,8 +8,8 @@ import (
 	"github.com/leobrada/yaml_tools"
 )
 
-// Config is a central structure that encapsulates configuration settings for various components of the application.
-// It aggregates multiple sub-configuration structures, each corresponding to a different component.
+// Config is the root configuration structure for the proxy.
+// It aggregates sub-configs for the frontend, loggers, and backend services.
 type Config struct {
 	Frontend           frontendConfig `yaml:"frontend"`             // Configuration specific to the frontend component.
 	DataPlaneLogger    LoggerConfig   `yaml:"data_plane_logger"`    // Configuration for logging within the data plane.
@@ -15,8 +17,8 @@ type Config struct {
 	Services           ServicesConfig `yaml:"services"`             // Configuration for various services the PEP serves.
 }
 
-// NewConfig creates a new Config instance by loading configuration settings from a specified YAML file.
-// It returns a pointer to the Config structure if successful, or an error if the file cannot be loaded or parsed.
+// NewConfig loads configuration settings from a YAML file into a Config struct.
+// It returns an error when the file cannot be read or parsed.
 //
 // Parameters:
 //   - confFilePath: The path to the YAML configuration file.

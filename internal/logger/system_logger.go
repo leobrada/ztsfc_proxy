@@ -1,3 +1,4 @@
+// Package logger provides system, data plane, and control plane loggers.
 package logger
 
 import (
@@ -13,6 +14,7 @@ var (
 	Success      string = "successfully"
 )
 
+// NewSystemLogger configures the global SystemLogger used by startup and diagnostics.
 func NewSystemLogger(systemLoggerOutput string, debugMode, errorMode bool, systemLoggerFormat string) error {
 	SystemLogger = logrus.New()
 
@@ -60,6 +62,7 @@ func initSystemLoggerInfoLevel(debugMode, errorMode bool) error {
 	return nil
 }
 
+// initOutputFormat selects JSON or text formatting for the system logger.
 func initOutputFormat(systemLoggerFormat string) {
 	switch systemLoggerFormat {
 	case "json":

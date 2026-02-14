@@ -1,3 +1,5 @@
+// Package pep implements the Policy Enforcement Point (PEP).
+// It accepts incoming requests, performs SNI-based routing, and proxies traffic to backends.
 package pep
 
 import (
@@ -16,7 +18,8 @@ import (
 	"github.com/leobrada/ztsfc_proxy/internal/web"
 )
 
-// Policy Enforcement Point (PEP) struct defining the main HTTP handler for the frontend HTTP server
+// PEP is the main HTTP handler for the frontend server.
+// It holds the service pool and a data-plane logger for request tracing.
 type PEP struct {
 	// DataPlane logger PEP uses for logging all its actions
 	dpLogger *log.Logger
@@ -48,6 +51,7 @@ func NewPEP(config *configs.Config, dataPlaneLogger *log.Logger) (*PEP, error) {
 }
 
 func (pep *PEP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// The SNI is set during the TLS handshake and used to select the backend.
 	targetSNI := r.TLS.ServerName
 	targetService, ok := pep.services.ServicePool[targetSNI]
 	if !ok {
@@ -56,6 +60,7 @@ func (pep *PEP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Create a reverse proxy targeting the selected backend URL.
 	proxy := httputil.NewSingleHostReverseProxy(targetService.ServiceUrl)
 	if proxy == nil {
 		pep.dpLogger.Printf("pep.ServeHTTP(): while serving requested service %s an internal error occured", targetSNI)
@@ -65,10 +70,11 @@ func (pep *PEP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if pep != nil && pep.dpLogger != nil {
 		proxy.ErrorLog = pep.dpLogger
 	}
-	// Calculate the request hash to match requests and responses in log files
+	// Calculate a request hash to match request/response pairs in logs.
 	rHash := hashutil.CalcRequestHash(r)
 	proxy.ModifyResponse = pep.responseDirector(rHash)
 
+	// Choose transport based on backend scheme and configured TLS.
 	proxyTransport, err := GetHTTPTransportForSchemeAndTLS(targetService.ServiceUrl.Scheme, pep.services.ServicesTLS)
 	if err != nil {
 		pep.dpLogger.Printf("pep.ServeHTTP(): requested service %s does not implement requested scheme", targetSNI)
@@ -77,19 +83,19 @@ func (pep *PEP) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	proxy.Transport = proxyTransport
 
+	// Log the forward operation; actual request mutation is minimal here.
 	pep.requestDirector(w, r, targetService.ServiceUrl, rHash)
 
 	proxy.ServeHTTP(w, r)
 }
 
-// Request director is used to modify and log the request if needed
-// The log includes a hash of the whole request (rHash) including timestamp to match requests and responses in log files
+// requestDirector logs the proxying action.
+// The hash includes a timestamp so each request is uniquely identified.
 func (pep *PEP) requestDirector(w http.ResponseWriter, r *http.Request, resource *url.URL, rHash string) {
 	pep.dpLogger.Printf("http: forwarding %s request from %s to %s - [Hash:'%s']", r.Method, r.RemoteAddr, resource.String()+r.URL.String(), rHash)
 }
 
-// Request director is used to modify and log the response if needed
-// The log includes a hash of the whole request (rHash) including timestamp to match requests and responses in log files
+// responseDirector applies response headers and logs the response event.
 func (pep *PEP) responseDirector(rHash string) func(*http.Response) error {
 	return func(resp *http.Response) error {
 		setHSTSHeader(resp)

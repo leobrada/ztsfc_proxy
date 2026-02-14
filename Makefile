@@ -1,4 +1,5 @@
 # Project setup
+# This Makefile builds the ztsfc_proxy binary and manages module dependencies.
 PROJECT_NAME := ztsfc_proxy
 PROJECT_REPO := ./cmd/ztsfc_proxy
 
@@ -50,14 +51,17 @@ build: go-get go-tidy go-build
 #	@echo "  >  Generating dependency files..."
 #	@GOBIN=$(GOBIN) go generate $(generate)
 
+## go-get: Update module dependencies.
 go-get:
 	@echo "> Checking for dependency updates..."
 	@go get -v -u all
 
+## go-tidy: Ensure module dependencies are tidy.
 go-tidy:
 	@echo "> Checking if there is any missing dependencies..."
 	@go mod tidy
 
+## go-build: Compile the binary to ./build/ztsfc_proxy.
 go-build:
 	@echo "> Building binary..."
 	@go build -o $(BINARY) $(PROJECT_REPO)

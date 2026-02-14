@@ -1,3 +1,4 @@
+// Package service models backend services and shared TLS settings.
 package service
 
 import (
@@ -11,6 +12,7 @@ type Service struct {
 	ServiceUrl *url.URL
 }
 
+// NewService parses the backend URL and returns a Service model.
 func NewService(serviceConf *configs.ServiceConfig) (*Service, error) {
 	serviceURL, err := url.Parse(serviceConf.ServiceURL)
 	if err != nil {

@@ -1,3 +1,5 @@
+// Package frontend wires the public HTTP server together with TLS and the PEP handler.
+// It is the boundary between network listeners and the internal proxy logic.
 package frontend
 
 import (
@@ -12,8 +14,8 @@ import (
 	"github.com/leobrada/ztsfc_proxy/internal/security/tlsutil"
 )
 
-// NewFrontend creates a new HTTP server instance for the frontend using the provided configuration.
-// It initializes necessary components such as logger, TLS configuration, and Policy Enforcement Point (PEP).
+// NewFrontend creates a configured HTTP server instance for the proxy frontend.
+// It initializes loggers, TLS configuration, and the Policy Enforcement Point (PEP).
 // Parameters:
 //   - config: A pointer to the configuration struct holding frontend and logging settings.
 //
@@ -33,7 +35,7 @@ func NewFrontend(config *configs.Config) (*http.Server, error) {
 	// 	return nil, fmt.Errorf("frontend.NewFrontend(): %v", err)
 	// }
 
-	// Initialize TLS configuration for the server.
+	// Initialize TLS configuration for the server using the frontend TLS block.
 	tls, err := tlsutil.NewServerTLS(&config.Frontend.TLS)
 	if err != nil {
 		return nil, fmt.Errorf("frontend.NewFrontend(): %v", err)
@@ -52,7 +54,7 @@ func NewFrontend(config *configs.Config) (*http.Server, error) {
 		return nil, fmt.Errorf("frontend.NewFrontend(): %v", err)
 	}
 
-	// Create a new HTTP request multiplexer.
+	// Create a new HTTP request multiplexer that routes all traffic to the PEP.
 	mux := http.NewServeMux()
 	// Register the PEP handler to serve all incoming requests.
 	mux.Handle("/", pep)

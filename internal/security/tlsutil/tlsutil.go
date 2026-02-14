@@ -1,3 +1,5 @@
+// Package tlsutil contains TLS helper functions for loading certificates,
+// building CA pools, and enforcing CRL-based verification.
 package tlsutil
 
 import (
@@ -13,7 +15,7 @@ import (
 	"github.com/leobrada/ztsfc_proxy/internal/logger"
 )
 
-// NewClientTLS creates a new TLS configuration for client-side connections using the provided TLS configuration.
+// NewClientTLS creates a TLS configuration for outbound connections to backend services.
 // It initializes certificate maps used for client authentication and certificate authorities (CAs), and certificate revocation lists (CRLs) for server verification.
 // Parameters:
 //   - tlsConfig: A pointer to the configuration struct holding TLS settings.
@@ -58,7 +60,7 @@ func NewClientTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 	return clientTLS, nil
 }
 
-// NewServerTLS creates a new TLS configuration for server-side connections using the provided TLS configuration.
+// NewServerTLS creates a TLS configuration for inbound client connections.
 // It initializes certificate authorities (CAs) and certificate revocation lists (CRLs) for client verification.
 // And certificate maps storing certificates for showing to clients, and client authentication settings.
 // Parameters:
@@ -220,8 +222,8 @@ func NewCertificateMap(tlsConfig *configs.TLSConfig) (map[string]tls.Certificate
 	return certificateMap, nil
 }
 
-// Maker function that returns the GetCertificate() function necessary for TLS configurations.
-// Has access to a list of server certificates keyed by SNI
+// makeGetCertificateFunction returns a GetCertificate callback for server-side TLS.
+// It selects the certificate based on SNI.
 func makeGetCertificateFunction(cm map[string]tls.Certificate) func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
 	// GetCertificate func(*ClientHelloInfo) (*Certificate, error)
 	return func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
@@ -234,8 +236,8 @@ func makeGetCertificateFunction(cm map[string]tls.Certificate) func(*tls.ClientH
 	}
 }
 
-// Maker function that returns the GetCertificate() function necessary for TLS configurations.
-// Has access to a list of server certificates keyed by SNI
+// makeGetClientCertificateFunction returns a GetClientCertificate callback for client-side TLS.
+// It selects a certificate that matches the acceptable CA list provided by the server.
 func makeGetClientCertificateFunction(cm map[string]tls.Certificate) func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
 	return func(info *tls.CertificateRequestInfo) (*tls.Certificate, error) {
 		if len(info.AcceptableCAs) == 0 {

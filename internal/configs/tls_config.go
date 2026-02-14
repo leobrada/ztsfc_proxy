@@ -1,3 +1,4 @@
+// Package configs defines the YAML-backed configuration structures used by the proxy.
 package configs
 
 type TLSConfig struct {

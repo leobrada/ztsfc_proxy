@@ -1,3 +1,5 @@
+// Package service models backend services and shared TLS settings.
+// It builds the service pool used by the PEP for routing.
 package service
 
 import (
@@ -15,12 +17,14 @@ type Services struct {
 	ServicePool map[string]*Service
 }
 
+// NewServices builds a service pool and shared TLS config for outbound connections.
 func NewServices(servicesConfig *configs.ServicesConfig) (*Services, error) {
 	servicesTLS, err := tlsutil.NewClientTLS(&servicesConfig.TLS)
 	if err != nil {
 		return nil, fmt.Errorf("service.NewServices(): %v", err)
 	}
 
+	// Parse and store backend URLs keyed by SNI.
 	servicePool := make(map[string]*Service)
 	for sni, serviceConf := range servicesConfig.ServicePool {
 		service, err := NewService(&serviceConf)

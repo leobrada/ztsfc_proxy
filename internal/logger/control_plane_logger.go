@@ -8,8 +8,8 @@ import (
 	"github.com/leobrada/ztsfc_proxy/internal/configs"
 )
 
-// NewControlPlaneLogger creates a new logger instance for the control plane with the provided configuration.
-// It initializes the logger output and sets up a custom logger with specific prefix and flags.
+// NewControlPlaneLogger creates a logger intended for control-plane operations.
+// This is currently unused but reserved for future PDP integration.
 // Parameters:
 //   - cpLoggerConfig: A pointer to the configuration struct holding logger settings for the control.
 //

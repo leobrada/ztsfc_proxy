@@ -1,3 +1,4 @@
+// Package hashutil provides helpers for request/response correlation.
 package hashutil
 
 import (
@@ -9,7 +10,8 @@ import (
 	"time"
 )
 
-// CalcRequestHash calculates the SHA256 hash of a given http.Request including the current time and returns the hash as string
+// CalcRequestHash calculates a SHA256 hash of an http.Request and the current time.
+// The body is read and restored so downstream handlers can consume it.
 func CalcRequestHash(r *http.Request) string {
 	// Get the request method (GET, POST, etc.)
 	method := r.Method

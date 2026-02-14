@@ -1,3 +1,4 @@
+// Package web provides small HTTP helpers for consistent error responses.
 package web
 
 import (

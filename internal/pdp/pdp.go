@@ -1,3 +1,5 @@
+// Package pdp contains the Policy Decision Point placeholder.
+// It is not wired into the runtime yet, but reserved for future policy logic.
 package pdp
 
 import (
@@ -6,7 +8,7 @@ import (
 	"github.com/leobrada/ztsfc_proxy/internal/configs"
 )
 
-// Policy Decision Point (PDP) struct defining the main access control instance for the ZTSFC proxy
+// PDP is the policy decision component (currently unused).
 type PDP struct {
 	// ControlPlane logger PDP uses for logging all its actions
 	cpLogger *log.Logger
