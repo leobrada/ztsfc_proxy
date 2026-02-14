@@ -8,6 +8,8 @@ import (
 	"crypto/x509"
 	"fmt"
 	"os"
+	"strings"
+	"sync"
 	"time"
 
 	gct "github.com/leobrada/golang_convenience_tools"
@@ -16,7 +18,9 @@ import (
 )
 
 // NewClientTLS creates a TLS configuration for outbound connections to backend services.
-// It initializes certificate maps used for client authentication and certificate authorities (CAs), and certificate revocation lists (CRLs) for server verification.
+// It initializes certificate maps used for client authentication and certificate authorities (CAs), and
+// certificate revocation lists (CRLs) for server verification. If crl_reload_interval is set, a background
+// ticker periodically reloads the CRL and swaps it into a shared holder used by VerifyConnection.
 // Parameters:
 //   - tlsConfig: A pointer to the configuration struct holding TLS settings.
 //
@@ -42,6 +46,10 @@ func NewClientTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("tlsutil.NewClientTLS(): could not load internal CRL: %v", err)
 	}
+	serverCRLRef := newCRLRef(serverCRL)
+	if err := startCRLReload(tlsConfig, serverCAsListForCRLChecking, serverCRLRef, "backend"); err != nil {
+		return nil, fmt.Errorf("tlsutil.NewClientTLS(): %v", err)
+	}
 
 	// Create a new TLS configuration for the client.
 	clientTLS := &tls.Config{
@@ -55,14 +63,15 @@ func NewClientTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 		Certificates:           nil,
 		RootCAs:                serverCAs,
 		GetClientCertificate:   makeGetClientCertificateFunction(cm),
-		VerifyConnection:       makeVerifyConnection(tls.RequireAndVerifyClientCert, serverCRL),
+		VerifyConnection:       makeVerifyConnection(tls.RequireAndVerifyClientCert, serverCRLRef),
 	}
 	return clientTLS, nil
 }
 
 // NewServerTLS creates a TLS configuration for inbound client connections.
-// It initializes certificate authorities (CAs) and certificate revocation lists (CRLs) for client verification.
-// And certificate maps storing certificates for showing to clients, and client authentication settings.
+// It initializes certificate authorities (CAs) and certificate revocation lists (CRLs) for client verification,
+// plus certificate maps used for server authentication. If crl_reload_interval is set, a background ticker
+// periodically reloads the CRL and swaps it into a shared holder used by VerifyConnection.
 // Parameters:
 //   - tlsConfig: A pointer to the configuration struct holding TLS settings.
 //
@@ -83,6 +92,10 @@ func NewServerTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 	clientCRL, err := NewCRL(tlsConfig, clientCAsListForCRLChecking)
 	if err != nil {
 		return nil, fmt.Errorf("tlsutil.NewServerTLS(): could not load external CRL: %v", err)
+	}
+	clientCRLRef := newCRLRef(clientCRL)
+	if err := startCRLReload(tlsConfig, clientCAsListForCRLChecking, clientCRLRef, "client"); err != nil {
+		return nil, fmt.Errorf("tlsutil.NewServerTLS(): %v", err)
 	}
 
 	// Initialize certificate map storing all server certificates shown to clients for server authentication
@@ -108,7 +121,7 @@ func NewServerTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 		ClientAuth:             clientAuthType,
 		ClientCAs:              clientCAs,
 		GetCertificate:         makeGetCertificateFunction(cm),
-		VerifyConnection:       makeVerifyConnection(clientAuthType, clientCRL),
+		VerifyConnection:       makeVerifyConnection(clientAuthType, clientCRLRef),
 	}
 	return serverTLS, nil
 }
@@ -264,13 +277,14 @@ func compareDNs(dn1, dn2 []byte) bool {
 	return bytes.Equal(dn1, dn2)
 }
 
-// makeVerifyConnection creates a function for verifying TLS connections against a certificate revocation list (CRL).
+// makeVerifyConnection creates a function for verifying TLS connections against a CRL.
+// The CRL is retrieved from a thread-safe holder to allow hot reloads without restarting the proxy.
 // Parameters:
 //   - crl: A pointer to the parsed and verified certificate revocation list.
 //
 // Returns:
 //   - func(tls.ConnectionState) error: A function that verifies TLS connections against the provided CRL.
-func makeVerifyConnection(clientAuthType tls.ClientAuthType, crl *x509.RevocationList) func(tls.ConnectionState) error {
+func makeVerifyConnection(clientAuthType tls.ClientAuthType, crlRef *crlRef) func(tls.ConnectionState) error {
 	// Define a function for verifying TLS connections.
 	return func(con tls.ConnectionState) error {
 		if clientAuthType != tls.NoClientCert {
@@ -279,6 +293,13 @@ func makeVerifyConnection(clientAuthType tls.ClientAuthType, crl *x509.Revocatio
 				return fmt.Errorf("tlsutil.VerifyConnection(): error: verified chains does not hold a valid client certificate")
 			}
 
+			if crlRef == nil {
+				return fmt.Errorf("tlsutil.VerifyConnection(): CRL reference is not available")
+			}
+			crl := crlRef.Get()
+			if crl == nil {
+				return fmt.Errorf("tlsutil.VerifyConnection(): CRL is not available")
+			}
 			// Iterate through revoked certificate entries in the CRL.
 			for _, revokedCertificateEntry := range crl.RevokedCertificateEntries {
 				// Check if the client certificate serial number matches any revoked certificate entry.
@@ -290,4 +311,73 @@ func makeVerifyConnection(clientAuthType tls.ClientAuthType, crl *x509.Revocatio
 		// Return nil if the connection is verified successfully.
 		return nil
 	}
+}
+
+type crlRef struct {
+	mu  sync.RWMutex
+	crl *x509.RevocationList
+}
+
+// newCRLRef wraps a CRL in a thread-safe holder used by VerifyConnection.
+func newCRLRef(crl *x509.RevocationList) *crlRef {
+	return &crlRef{crl: crl}
+}
+
+// Get returns the current CRL snapshot.
+func (ref *crlRef) Get() *x509.RevocationList {
+	ref.mu.RLock()
+	defer ref.mu.RUnlock()
+	return ref.crl
+}
+
+// Set replaces the current CRL snapshot.
+func (ref *crlRef) Set(crl *x509.RevocationList) {
+	ref.mu.Lock()
+	ref.crl = crl
+	ref.mu.Unlock()
+}
+
+// startCRLReload starts a goroutine that reloads the CRL at the configured interval.
+// On reload failure, the previous CRL remains in use and a warning is logged.
+func startCRLReload(tlsConfig *configs.TLSConfig, caList []*x509.Certificate, ref *crlRef, label string) error {
+	interval, ok, err := parseCRLReloadInterval(tlsConfig)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil
+	}
+
+	logger.SystemLogger.Infof("tlsutil: CRL reload for %s enabled: every %s", label, interval)
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for range ticker.C {
+			crl, err := NewCRL(tlsConfig, caList)
+			if err != nil {
+				logger.SystemLogger.Warnf("tlsutil: CRL reload for %s failed: %v", label, err)
+				continue
+			}
+			ref.Set(crl)
+			logger.SystemLogger.Debugf("tlsutil: CRL reload for %s %s", label, logger.Success)
+		}
+	}()
+
+	return nil
+}
+
+// parseCRLReloadInterval parses the configured duration string and indicates if reload is enabled.
+func parseCRLReloadInterval(tlsConfig *configs.TLSConfig) (time.Duration, bool, error) {
+	value := strings.TrimSpace(tlsConfig.CRLReloadInterval)
+	if value == "" {
+		return 0, false, nil
+	}
+	interval, err := time.ParseDuration(value)
+	if err != nil {
+		return 0, false, fmt.Errorf("tlsutil: invalid crl_reload_interval: %v", err)
+	}
+	if interval <= 0 {
+		return 0, false, nil
+	}
+	return interval, true, nil
 }

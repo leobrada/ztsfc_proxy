@@ -53,12 +53,14 @@ Configuration is loaded from a YAML file (default: `configs/config.yml`) and map
   - `tls.client_auth`: enable/disable client certificate validation.
   - `tls.cas`: list of CAs accepted for client certificates.
   - `tls.crl`: CRL used to reject revoked client certificates.
+  - `tls.crl_reload_interval`: optional reload interval for the CRL (e.g. `5m`).
 - `data_plane_logger`: output path for request/response logs.
 - `control_plane_logger`: output path (wired for future PDP integration).
 - `services`: settings for outbound connections to backends.
   - `tls.certificates`: client certs used when connecting to HTTPS backends.
   - `tls.cas`: list of CAs accepted for backend server certificates.
   - `tls.crl`: CRL used to reject revoked backend certificates.
+  - `tls.crl_reload_interval`: optional reload interval for the backend CRL (e.g. `5m`).
   - `service_pool`: map of SNI -> `service_url` target.
 
 See `configs/config.yml` for a real configuration and `configs/example_config copy.yml` for a template-style example.
@@ -67,8 +69,10 @@ See `configs/config.yml` for a real configuration and `configs/example_config co
 - `frontend.addr` must be in `host:port` format and should match the TLS certificate names used in `frontend.tls.certificates`.
 - `frontend.tls.certificates` is keyed by SNI; the same key is used for routing to a backend.
 - `frontend.tls.client_auth` controls whether the proxy requires client certificates. If enabled, clients must present certs signed by `frontend.tls.cas` and not revoked by `frontend.tls.crl`.
+- `frontend.tls.crl_reload_interval` enables periodic reload of the client CRL without restarting the proxy.
 - `services.tls.certificates` provides client certificates for mTLS when connecting to HTTPS backends. The map is keyed by SNI, which is derived from the backend URL or presented via the TLS handshake.
 - `services.service_pool` is the authoritative routing table. Missing or unknown SNI values result in a 404 from the proxy.
+- `services.tls.crl_reload_interval` enables periodic reload of the backend CRL without restarting the proxy.
 
 ### Minimal config example
 ```yaml
@@ -165,3 +169,9 @@ The entrypoint is `cmd/ztsfc_proxy/main.go`, which supports:
 - Only the PEP is active; PDP wiring is currently commented out in `internal/frontend/frontend.go`.
 - Backend selection is strictly based on SNI from the client TLS handshake.
 - HTTP/2 is enforced via `NextProtos` in TLS configuration.
+
+## CRL reload behavior
+When `crl_reload_interval` is set under `frontend.tls` or `services.tls`, the proxy starts a background
+reload loop for that CRL. The TLS verification callback reads the latest CRL snapshot from a thread-safe
+holder for each handshake, so new revocations take effect without restarting the process. If a reload
+fails (e.g., file missing or invalid), the proxy keeps using the last known-good CRL and logs a warning.

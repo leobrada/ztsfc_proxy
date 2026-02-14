@@ -11,6 +11,10 @@ type TLSConfig struct {
 	CAs []string `yaml:"cas"`
 	// certificate revocation list checked for client certificates provided by a client
 	CRL string `yaml:"crl"`
+	// CRLReloadInterval controls how often the CRL is reloaded (e.g. "5m").
+	// When set, the TLS verifier reads the latest CRL snapshot on each handshake.
+	// Empty or zero duration disables periodic reloads and uses the startup CRL only.
+	CRLReloadInterval string `yaml:"crl_reload_interval"`
 }
 
 type certificateConfig struct {
