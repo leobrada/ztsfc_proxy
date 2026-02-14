@@ -26,19 +26,19 @@ func NewClientTLS(tlsConfig *configs.TLSConfig) (*tls.Config, error) {
 	// Indexed by the target server's SNI
 	cm, err := NewCertificateMap(tlsConfig)
 	if err != nil {
-		return nil, fmt.Errorf("tlsutil.NewTLS(): could not load CL: %v", err)
+		return nil, fmt.Errorf("tlsutil.NewClientTLS(): could not load CL: %v", err)
 	}
 
 	// Initialize certificate authorities (CAs) for server verification.
 	serverCAs, serverCAsListForCRLChecking, err := NewCAs(tlsConfig)
 	if err != nil {
-		return nil, fmt.Errorf("tlsutil.NewServerTLS(): could not load client CA list: %v", err)
+		return nil, fmt.Errorf("tlsutil.NewClientTLS(): could not load client CA list: %v", err)
 	}
 
 	// Initialize certificate revocation list (CRL) for server certificate verification.
 	serverCRL, err := NewCRL(tlsConfig, serverCAsListForCRLChecking)
 	if err != nil {
-		return nil, fmt.Errorf("tlsutil.NewTLS(): could not load internal CRL: %v", err)
+		return nil, fmt.Errorf("tlsutil.NewClientTLS(): could not load internal CRL: %v", err)
 	}
 
 	// Create a new TLS configuration for the client.
