@@ -348,18 +348,18 @@ func startCRLReload(tlsConfig *configs.TLSConfig, caList []*x509.Certificate, re
 		return nil
 	}
 
-	logger.SystemLogger.Infof("tlsutil: CRL reload for %s enabled: every %s", label, interval)
+	logger.SystemLogger.Infof("tlsutil.startCRLReload(): CRL reload for %s enabled: every %s", label, interval)
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for range ticker.C {
 			crl, err := NewCRL(tlsConfig, caList)
 			if err != nil {
-				logger.SystemLogger.Warnf("tlsutil: CRL reload for %s failed: %v", label, err)
+				logger.SystemLogger.Warnf("tlsutil.startCRLReload(): CRL reload for %s failed: %v", label, err)
 				continue
 			}
 			ref.Set(crl)
-			logger.SystemLogger.Debugf("tlsutil: CRL reload for %s %s", label, logger.Success)
+			logger.SystemLogger.Debugf("tlsutil.startCRLReload(): CRL reload for %s %s", label, logger.Success)
 		}
 	}()
 
@@ -374,7 +374,7 @@ func parseCRLReloadInterval(tlsConfig *configs.TLSConfig) (time.Duration, bool, 
 	}
 	interval, err := time.ParseDuration(value)
 	if err != nil {
-		return 0, false, fmt.Errorf("tlsutil: invalid crl_reload_interval: %v", err)
+		return 0, false, fmt.Errorf("tlsutil.parseCRLReloadInterval(): invalid crl_reload_interval: %v", err)
 	}
 	if interval <= 0 {
 		return 0, false, nil
