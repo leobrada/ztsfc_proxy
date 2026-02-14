@@ -12,6 +12,7 @@ ztsfc_proxy is a Go-based, TLS-first reverse proxy that acts as a Policy Enforce
 - The response is returned to the client with HSTS headers applied.
 - Requests and responses are logged with a per-request hash to correlate events in logs.
 
+
 ## Key features
 - TLS 1.3 only for both incoming and outgoing connections.
 - Optional mTLS for client authentication on the frontend.
